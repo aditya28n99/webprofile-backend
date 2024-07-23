@@ -3,107 +3,123 @@ const router = express.Router();
 const db = require('../db');
 
 // Get all blogs
-router.get('/', (req, res) => {
-  const sql = 'SELECT * FROM blog_posts';
-  db.query(sql, (err, results) => {
-    if (err) {
-      return res.status(500).json({ error: err.message });
-    }
+router.get('/', async (req, res) => {
+  try {
+    const [results] = await db.query('SELECT * FROM blog_posts');
     res.json(results);
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Fetch a blog post
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
   const postId = req.params.id;
-  db.query('SELECT * FROM blog_posts WHERE id = ?', [postId], (err, results) => {
-    if (err) return res.status(500).send(err);
+  try {
+    const [results] = await db.query('SELECT * FROM blog_posts WHERE id = ?', [postId]);
+    if (results.length === 0) {
+      return res.status(404).json({ message: 'Blog post not found' });
+    }
     res.json(results[0]);
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Create a new blog post
-router.post('/', (req, res) => {
-  const { title, date, image_url, content } = req.body;
-  const sql = 'INSERT INTO blog_posts (title, date, image_url, content) VALUES (?, ?, ?, ?)';
-  db.query(sql, [title, date, image_url, content], (err, results) => {
-    if (err) return res.status(500).send(err);
+router.post('/', async (req, res) => {
+  const { title, subtitle, date, image_url, content } = req.body;
+  try {
+    const [results] = await db.query('INSERT INTO blog_posts (title, subtitle, date, image_url, content) VALUES (?, ?, ?, ?, ?)', [title, subtitle, date, image_url, content]);
     res.status(201).json({ id: results.insertId });
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Update a blog post
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
   const postId = req.params.id;
-  const { title, date, image_url, content } = req.body;
-  const sql = 'UPDATE blog_posts SET title = ?, date = ?, image_url = ?, content = ? WHERE id = ?';
-  db.query(sql, [title, date, image_url, content, postId], (err, results) => {
-    if (err) return res.status(500).send(err);
+  const { title, subtitle, date, image_url, content } = req.body;
+  try {
+    const [results] = await db.query('UPDATE blog_posts SET title = ?, subtitle = ?, date = ?, image_url = ?, content = ? WHERE id = ?', [title, subtitle, date, image_url, content, postId]);
     res.json({ message: 'Blog post updated successfully' });
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Delete a blog post
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
   const postId = req.params.id;
-  const sql = 'DELETE FROM blog_posts WHERE id = ?';
-  db.query(sql, [postId], (err, results) => {
-    if (err) return res.status(500).send(err);
+  try {
+    const [results] = await db.query('DELETE FROM blog_posts WHERE id = ?', [postId]);
+    if (results.affectedRows === 0) {
+      return res.status(404).json({ message: 'Blog post not found' });
+    }
     res.json({ message: 'Blog post deleted successfully' });
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Fetch likes for a post
-router.get('/:id/likes', (req, res) => {
+router.get('/:id/likes', async (req, res) => {
   const postId = req.params.id;
-  db.query('SELECT like_count FROM likes WHERE post_id = ?', [postId], (err, results) => {
-    if (err) return res.status(500).send(err);
+  try {
+    const [results] = await db.query('SELECT like_count FROM likes WHERE post_id = ?', [postId]);
     res.json(results[0]);
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Update likes for a post
-router.post('/:id/likes', (req, res) => {
+router.post('/:id/likes', async (req, res) => {
   const postId = req.params.id;
-  db.query('UPDATE likes SET like_count = like_count + 1 WHERE post_id = ?', [postId], (err, results) => {
-    if (err) return res.status(500).send(err);
-    db.query('SELECT like_count FROM likes WHERE post_id = ?', [postId], (err, results) => {
-      if (err) return res.status(500).send(err);
-      res.json(results[0]);
-    });
-  });
+  try {
+    await db.query('UPDATE likes SET like_count = like_count + 1 WHERE post_id = ?', [postId]);
+    const [results] = await db.query('SELECT like_count FROM likes WHERE post_id = ?', [postId]);
+    res.json(results[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Fetch comments for a post
-router.get('/:id/comments', (req, res) => {
+router.get('/:id/comments', async (req, res) => {
   const postId = req.params.id;
-  db.query('SELECT * FROM comments WHERE post_id = ? ORDER BY created_at ASC', [postId], (err, results) => {
-    if (err) return res.status(500).send(err);
+  try {
+    const [results] = await db.query('SELECT * FROM comments WHERE post_id = ? ORDER BY created_at ASC', [postId]);
     res.json(results);
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Add a comment to a post
-router.post('/:id/comments', (req, res) => {
+router.post('/:id/comments', async (req, res) => {
   const postId = req.params.id;
   const { comment, user_name } = req.body;
-  db.query('INSERT INTO comments (post_id, comment, user_name) VALUES (?, ?, ?)', [postId, comment, user_name], (err, results) => {
-    if (err) return res.status(500).send(err);
-    db.query('SELECT * FROM comments WHERE post_id = ? ORDER BY created_at ASC', [postId], (err, results) => {
-      if (err) return res.status(500).send(err);
-      res.json(results);
-    });
-  });
+  try {
+    await db.query('INSERT INTO comments (post_id, comment, user_name) VALUES (?, ?, ?)', [postId, comment, user_name]);
+    const [results] = await db.query('SELECT * FROM comments WHERE post_id = ? ORDER BY created_at ASC', [postId]);
+    res.json(results);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Update a comment for a post
-router.put('/:id/comments/:commentId', (req, res) => {
+router.put('/:id/comments/:commentId', async (req, res) => {
   const commentId = req.params.commentId;
   const { comment } = req.body;
-  db.query('UPDATE comments SET comment = ? WHERE id = ?', [comment, commentId], (err, results) => {
-    if (err) return res.status(500).send(err);
+  try {
+    await db.query('UPDATE comments SET comment = ? WHERE id = ?', [comment, commentId]);
     res.json({ message: 'Comment updated successfully' });
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 module.exports = router;

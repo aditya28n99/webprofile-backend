@@ -1,86 +1,69 @@
-// backend/routes/projects.js
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
 // Get all projects
-router.get('/', (req, res) => {
-  const sql = 'SELECT * FROM projects';
-  db.query(sql, (err, results) => {
-    if (err) {
-      return res.status(500).json({ error: err.message });
-    }
+router.get('/', async (req, res) => {
+  try {
+    const [results] = await db.query('SELECT * FROM projects');
     res.json(results);
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Get a single project by ID
-router.get('/:id', (req, res) => {
-  const sql = 'SELECT * FROM projects WHERE id = ?';
-  db.query(sql, [req.params.id], (err, result) => {
-    if (err) {
-      return res.status(500).json({ error: err.message });
-    }
+router.get('/:id', async (req, res) => {
+  try {
+    const [result] = await db.query('SELECT * FROM projects WHERE id = ?', [req.params.id]);
     if (result.length === 0) {
       return res.status(404).json({ message: 'Project not found' });
     }
     res.json(result[0]);
-  });
-}); 
-
-// Route to get a specific project by ID
-router.get('/:id', (req, res) => {
-  const sql = 'SELECT * FROM projects WHERE id = ?';
-  db.query(sql, [req.params.id], (err, result) => {
-    if (err) {
-      return res.status(500).json({ error: err.message });
-    }
-    if (result.length === 0) {
-      return res.status(404).json({ message: 'Project not found' });
-    }
-    res.json(result[0]);
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Create a new project
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   const project = req.body;
-  const sql = 'INSERT INTO projects SET ?';
-  db.query(sql, project, (err, result) => {
-    if (err) {
-      return res.status(500).json({ error: err.message });
-    }
+  try {
+    const [result] = await db.query('INSERT INTO projects SET ?', project);
     res.status(201).json({ id: result.insertId, ...project });
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Update a project
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
   const { image_url, title, description, technologies, github_link, live_link } = req.body;
-  const sql = 'UPDATE projects SET image_url = ?, title = ?, description = ?, technologies = ?, github_link = ?, live_link = ? WHERE id = ?';
-  db.query(sql, [image_url, title, description, technologies, github_link, live_link, req.params.id], (err, result) => {
-    if (err) {
-      return res.status(500).json({ error: err.message });
-    }
+  try {
+    const [result] = await db.query(
+      'UPDATE projects SET image_url = ?, title = ?, description = ?, technologies = ?, github_link = ?, live_link = ? WHERE id = ?',
+      [image_url, title, description, technologies, github_link, live_link, req.params.id]
+    );
     if (result.affectedRows === 0) {
       return res.status(404).json({ message: 'Project not found' });
     }
     res.json({ id: req.params.id, image_url, title, description, technologies, github_link, live_link });
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Delete a project
-router.delete('/:id', (req, res) => {
-  const sql = 'DELETE FROM projects WHERE id = ?';
-  db.query(sql, [req.params.id], (err, result) => {
-    if (err) {
-      return res.status(500).json({ error: err.message });
-    }
+router.delete('/:id', async (req, res) => {
+  try {
+    const [result] = await db.query('DELETE FROM projects WHERE id = ?', [req.params.id]);
     if (result.affectedRows === 0) {
       return res.status(404).json({ message: 'Project not found' });
     }
     res.status(204).send();
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 module.exports = router;
